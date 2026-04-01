@@ -1,0 +1,25 @@
+{
+    "students": [
+        {
+            "id": 1,
+            "name": "Alice"
+        }
+    ],
+    "courses": [
+        {
+            "code": "CS101",
+            "title": "Intro to Computer Science"
+        }
+    ],
+    "enrollments": [
+        {
+            "student_id": 1,
+            "course_code": "CS101",
+            "grades": [
+                85,
+                90,
+                78
+            ]
+        }
+    ]
+}
