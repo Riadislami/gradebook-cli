@@ -1,121 +1,134 @@
 import argparse
+import logging
 
 from gradebook.storage import load_data, save_data
 from gradebook.service import (
     add_student,
     add_course,
-    enroll_student,
+    enroll_student as enroll,
     add_grade,
     list_students,
     list_courses,
     list_enrollments,
     compute_average,
-    compute_gpa,
+    compute_gpa
+)
+
+# ---------------- LOGGING ----------------
+logging.basicConfig(
+    filename="logs/app.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
 def main():
     parser = argparse.ArgumentParser(description="Gradebook CLI")
+
     subparsers = parser.add_subparsers(dest="command")
 
-    # add-student
-    parser_add_student = subparsers.add_parser("add-student", help="Add a new student")
-    parser_add_student.add_argument("--name", required=True, help="Student name")
+    # ---------------- ADD STUDENT ----------------
+    parser_add_student = subparsers.add_parser("add-student")
+    parser_add_student.add_argument("--name", required=True)
 
-    # add-course
-    parser_add_course = subparsers.add_parser("add-course", help="Add a new course")
-    parser_add_course.add_argument("--code", required=True, help="Course code")
-    parser_add_course.add_argument("--title", required=True, help="Course title")
+    # ---------------- ADD COURSE ----------------
+    parser_add_course = subparsers.add_parser("add-course")
+    parser_add_course.add_argument("--code", required=True)
+    parser_add_course.add_argument("--title", required=True)
 
-    # enroll
-    parser_enroll = subparsers.add_parser("enroll", help="Enroll student in course")
-    parser_enroll.add_argument("--student-id", type=int, required=True, help="Student ID")
-    parser_enroll.add_argument("--course", required=True, help="Course code")
+    # ---------------- ENROLL ----------------
+    parser_enroll = subparsers.add_parser("enroll")
+    parser_enroll.add_argument("--student-id", type=int, required=True)
+    parser_enroll.add_argument("--course", required=True)
 
-    # add-grade
-    parser_add_grade = subparsers.add_parser("add-grade", help="Add grade to enrollment")
-    parser_add_grade.add_argument("--student-id", type=int, required=True, help="Student ID")
-    parser_add_grade.add_argument("--course", required=True, help="Course code")
-    parser_add_grade.add_argument("--grade", type=float, required=True, help="Grade value")
+    # ---------------- ADD GRADE ----------------
+    parser_add_grade = subparsers.add_parser("add-grade")
+    parser_add_grade.add_argument("--student-id", type=int, required=True)
+    parser_add_grade.add_argument("--course", required=True)
+    parser_add_grade.add_argument("--grade", type=float, required=True)
 
-    # list
-    parser_list = subparsers.add_parser("list", help="List data")
+    # ---------------- LIST ----------------
+    parser_list = subparsers.add_parser("list")
     parser_list.add_argument("entity", choices=["students", "courses", "enrollments"])
-    parser_list.add_argument("--sort", default=None, help="Sort field")
+    parser_list.add_argument("--sort", default=None)
 
-    # avg
-    parser_avg = subparsers.add_parser("avg", help="Compute course average for a student")
-    parser_avg.add_argument("--student-id", type=int, required=True, help="Student ID")
-    parser_avg.add_argument("--course", required=True, help="Course code")
+    # ---------------- AVG ----------------
+    parser_avg = subparsers.add_parser("avg")
+    parser_avg.add_argument("--student-id", type=int, required=True)
+    parser_avg.add_argument("--course", required=True)
 
-    # gpa
-    parser_gpa = subparsers.add_parser("gpa", help="Compute GPA for a student")
-    parser_gpa.add_argument("--student-id", type=int, required=True, help="Student ID")
+    # ---------------- GPA ----------------
+    parser_gpa = subparsers.add_parser("gpa")
+    parser_gpa.add_argument("--student-id", type=int, required=True)
 
     args = parser.parse_args()
+
     data = load_data()
 
     try:
+        # -------- ADD STUDENT --------
         if args.command == "add-student":
             student = add_student(data, args.name)
             save_data(data)
-            print(f"Student added successfully: {student}")
+            logging.info(f"Added student: {student}")
+            print(student)
 
+        # -------- ADD COURSE --------
         elif args.command == "add-course":
             course = add_course(data, args.code, args.title)
             save_data(data)
-            print(f"Course added successfully: {course}")
+            logging.info(f"Added course: {course}")
+            print(course)
 
+        # -------- ENROLL --------
         elif args.command == "enroll":
-            enrollment = enroll_student(data, args.student_id, args.course)
+            enrollment = enroll(data, args.student_id, args.course)
             save_data(data)
-            print(f"Enrollment successful: {enrollment}")
+            logging.info(f"Enrollment created: {enrollment}")
+            print(enrollment)
 
+        # -------- ADD GRADE --------
         elif args.command == "add-grade":
             enrollment = add_grade(data, args.student_id, args.course, args.grade)
             save_data(data)
-            print(f"Grade added successfully: {enrollment}")
+            logging.info(f"Added grade: {args.grade} to {enrollment}")
+            print(enrollment)
 
+        # -------- LIST --------
         elif args.command == "list":
             if args.entity == "students":
-                students = list_students(data)
-                if not students:
-                    print("No students found.")
-                else:
-                    for student in students:
-                        print(student)
-
+                result = list_students(data)
             elif args.entity == "courses":
-                courses = list_courses(data)
-                if not courses:
-                    print("No courses found.")
-                else:
-                    for course in courses:
-                        print(course)
+                result = list_courses(data)
+            else:
+                result = list_enrollments(data)
 
-            elif args.entity == "enrollments":
-                enrollments = list_enrollments(data)
-                if not enrollments:
-                    print("No enrollments found.")
-                else:
-                    for enrollment in enrollments:
-                        print(enrollment)
+            logging.info(f"Listed {args.entity}")
+            for item in result:
+                print(item)
 
+        # -------- AVG --------
         elif args.command == "avg":
-            average = compute_average(data, args.student_id, args.course)
-            print(f"Average: {average:.2f}")
+            avg = compute_average(data, args.student_id, args.course)
+            logging.info(f"Average computed: {avg}")
+            print(f"Average: {avg:.2f}")
 
+        # -------- GPA --------
         elif args.command == "gpa":
             gpa = compute_gpa(data, args.student_id)
+            logging.info(f"GPA computed: {gpa}")
             print(f"GPA: {gpa:.2f}")
 
         else:
             parser.print_help()
 
-    except ValueError as error:
-        print(f"Error: {error}")
-    except Exception as error:
-        print(f"Unexpected error: {error}")
+    except ValueError as e:
+        logging.error(f"ValueError: {e}")
+        print(f"Error: {e}")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        print(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":
